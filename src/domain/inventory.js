@@ -4,6 +4,7 @@
 import { newId, referenceCode } from './ids.js';
 import { Queue } from './waitlistQueue.js';
 import { DomainError } from './errors.js';
+import { summarizeEvent } from './eventSearch.js';
 
 export const MAX_TICKETS_PER_BOOKING = 10;
 
@@ -90,6 +91,19 @@ export function publishEvent(store, eventId) {
   }
   event.status = 'published';
   return event;
+}
+
+export function unpublishEvent(store, eventId) {
+  const event = getEvent(store, eventId);
+  event.status = 'draft';
+  return event;
+}
+
+// What the public event list is built from. Drafts are hidden unless explicitly requested.
+export function listEventSummaries(store, { publishedOnly = true } = {}) {
+  return [...store.events.values()]
+    .filter((event) => !publishedOnly || event.status === 'published')
+    .map((event) => summarizeEvent(event, event.tierIds.map((id) => store.tiers.get(id))));
 }
 
 export function seatsLeft(tier) {
