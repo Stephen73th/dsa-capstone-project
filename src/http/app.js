@@ -5,6 +5,7 @@ import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { resolve, normalize, join, extname } from 'node:path';
 import { Router } from './router.js';
+import { registerRoutes } from './routes.js';
 import { DomainError } from '../domain/errors.js';
 
 const MIME_TYPES = {
@@ -25,6 +26,7 @@ const DOMAIN_STATUS_MAP = {
   SOLD_OUT: 409,
   INVALID_STATE: 409,
   INVALID_TRANSITION: 409,
+  PAYMENT_DECLINED: 400,
   NOT_SOLD_OUT: 400,
   UNAUTHORIZED: 401,
   FORBIDDEN: 403,
@@ -63,13 +65,30 @@ export async function parseJsonBody(req) {
 export function createApp({
   staticDir = resolve(process.cwd(), 'public'),
   router = new Router(),
+  eventService,
+  bookingService,
 } = {}) {
   // Built-in health check route
   router.get('/health', async ({ res }) => {
     sendJson(res, 200, { status: 'ok' });
   });
 
+  if (eventService && bookingService) {
+    registerRoutes(router, { eventService, bookingService });
+  }
+
   const app = createServer(async (req, res) => {
+    // Enable CORS for testing tools like Hoppscotch / Postman
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-user-id');
+
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     const pathname = url.pathname;
 
