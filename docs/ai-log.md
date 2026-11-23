@@ -23,11 +23,23 @@ Every time you give an AI tool a significant prompt, add an entry. Three lines e
 - **What I asked:** Implement architecture documentation with Mermaid diagrams, booking life cycle state machine, custom HTTP router with dynamic path parameters, native node:http server with /health, static file serving with directory traversal guard, and tests.
 - **What came back:** Clean ES modules, complete architecture diagrams, strict state machine transitions with INVALID_TRANSITION errors, and HTTP server returning uniform JSON errors.
 - **What was wrong (or "nothing"):** Ensured terminal states (cancelled, refunded, checked_in) reject any subsequent transition, and added tests covering directory traversal protection and dynamic port listening.
-
 ## Build 4
 
 ### Prompt 1: Build 4 prompt (docs/build-4.md)
 - **What I asked:** Build a working in-memory REST API (`MemoryRepository`, `EventService`, `BookingService`, `MockPaymentGateway`, routes in `src/http/`, curl examples in `docs/api-examples.md`, and integration tests using `node:test`).
 - **What came back:** Clean layered architecture with async repository methods, domain state machine integration, uniform JSON error responses, and mock payment handling with card decline support.
 - **What was wrong (or "nothing"):** Completed the missing assertion in `test/api.test.js` for paying an already paid booking, and added an explicit test verifying that only the booking owner (`x-user-id`) can pay for their booking.
+
+## Build 5
+
+### Prompt 1: Move to SQLite and reproduce the overselling problem (docs/build-5.md)
+- **What I asked:** Create SQLite schema (`schema.sql`) and connection using `node:sqlite`, implement `SqliteRepository` with parameterised queries matching `MemoryRepository`, add `scripts/seed.js`, connect `server.js` to persist data, and build `scripts/oversell-demo.js` to reproduce the race condition with 50 concurrent bookings.
+- **What came back:** SQLite schema with strict table and capacity constraints, matching async repository methods, seed script, and a demo script demonstrating the concurrency flaw where multiple bookings slip in.
+- **What was wrong (or "nothing"):** Left the capacity update non-atomic in `SqliteRepository.updateTierSold` intentionally as specified so the race condition reproduces clearly in the demo prior to applying Prompt 2's atomic fix.
+
+### Prompt 2: Fix overselling at the database level (docs/build-5.md)
+- **What I asked:** Fix the overselling race condition in the database using an atomic statement (`UPDATE ticket_tiers SET sold = sold + ? WHERE id = ? AND sold + ? <= capacity`), throw `SOLD_OUT` when `changes === 0`, explain why locks or double-checking in JS fail, add `test/oversell.test.js`, and demonstrate before/after numbers.
+- **What came back:** Atomic SQL reservation in `SqliteRepository`, `test/oversell.test.js` validating 50 concurrent requests yielding exactly 1 success and 49 `SOLD_OUT`, and an updated demo script printing before-and-after results.
+- **What was wrong (or "nothing"):** Nothing; ensured `updateTierSold` releases seats safely when `soldDelta < 0` (e.g. during cancellation/refunds) without going below 0.
+
 
