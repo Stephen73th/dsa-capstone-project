@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Details & Booking - EventPass</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-container">
+      <a href="/" class="site-title">
+        <span>🎟️ EventPass</span>
+      </a>
+      <nav>
+        <a href="/" class="btn btn-sm btn-secondary">&larr; Back to Events</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <div id="status-container" style="text-align: center; padding: 2rem;"></div>
+
+    <!-- Event Info Header -->
+    <section id="event-info-section" style="display: none;"></section>
+
+    <!-- Ticket Tiers Section -->
+    <section id="tiers-section" class="tiers-section" style="display: none;">
+      <h2>Choose Your Ticket</h2>
+      <div id="tiers-list"></div>
+    </section>
+
+    <!-- Checkout & Mock Payment Section -->
+    <section id="checkout-section" class="checkout-box" style="display: none;" aria-live="polite">
+      <div id="checkout-content"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 EventPass Ticketing. Course Capstone Project.</p>
+  </footer>
+
+  <script type="module" src="/js/pages/event.js"></script>
+</body>
+</html>

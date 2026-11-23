@@ -3,10 +3,87 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Event Ticketing Platform</title>
+  <title>Event Ticketing Platform - Browse Events</title>
+  <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
-  <h1>Event Ticketing Platform</h1>
-  <p>Static file serving is operational.</p>
+  <header class="site-header">
+    <div class="header-container">
+      <a href="/" class="site-title">
+        <span>🎟️ EventPass</span>
+      </a>
+      <nav>
+        <a href="/" class="btn btn-sm btn-secondary">Browse Events</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header style="margin-bottom: 2rem;">
+      <h1>Discover Events</h1>
+      <p>Find, book, and secure your tickets in Lagos, Abuja, and beyond.</p>
+    </header>
+
+    <!-- Search & Filter Controls -->
+    <form id="filter-form" class="filter-bar" role="search">
+      <div class="form-group">
+        <label for="search-input">Search Events</label>
+        <input
+          type="text"
+          id="search-input"
+          placeholder="e.g. Lagos Tech, Jazz..."
+          autocomplete="off"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="city-select">City</label>
+        <select id="city-select">
+          <option value="">All Cities</option>
+          <option value="Lagos">Lagos</option>
+          <option value="Abuja">Abuja</option>
+          <option value="Kano">Kano</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="max-price-input">Max Price (₦)</label>
+        <input
+          type="number"
+          id="max-price-input"
+          placeholder="e.g. 10000"
+          min="0"
+          step="500"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="sort-select">Sort By</label>
+        <select id="sort-select">
+          <option value="date">Date (Earliest First)</option>
+          <option value="price">Price (Cheapest First)</option>
+          <option value="availability">Availability (Most Seats)</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="justify-content: flex-end;">
+        <button type="button" id="reset-filters-btn" class="btn btn-secondary">
+          Clear Filters
+        </button>
+      </div>
+    </form>
+
+    <!-- Events List Container -->
+    <section aria-live="polite">
+      <div id="events-grid" class="events-grid"></div>
+      <div id="status-message" style="text-align: center; padding: 3rem 1rem;"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 EventPass Ticketing. Course Capstone Project.</p>
+  </footer>
+
+  <script type="module" src="/js/pages/home.js"></script>
 </body>
 </html>
