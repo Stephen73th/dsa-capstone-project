@@ -1,201 +1,139 @@
-// API client layer for the frontend.
-// Exports listEvents, getEvent, createBooking, and pay.
-// Currently reads from and updates local mock state, returning promises with the same shape as the REST API.
-// Pages must never call fetch directly.
+// Real HTTP API client communicating with backend endpoints.
+// Automatically attaches Bearer tokens via getAuthHeaders().
 
-import { initialEvents } from './mockData.js';
+import { getAuthHeaders } from './session.js';
 
-// Deep clone mock data into memory state
-let eventsStore = JSON.parse(JSON.stringify(initialEvents));
-const bookingsStore = new Map();
+async function request(path, options = {}) {
+  const url = path.startsWith('/api') ? path : `/api${path}`;
+  const headers = {
+    'Content-Type': 'application/json',
+    ...getAuthHeaders(),
+    ...(options.headers || {}),
+  };
 
-function generateReference() {
-  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
-  let ref = '';
-  for (let i = 0; i < 8; i++) {
-    ref += chars.charAt(Math.floor(Math.random() * chars.length));
+  const config = {
+    ...options,
+    headers,
+  };
+
+  if (config.body && typeof config.body === 'object' && !(config.body instanceof FormData)) {
+    config.body = JSON.stringify(config.body);
   }
-  return ref;
+
+  const res = await fetch(url, config);
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    data = {};
+  }
+
+  if (!res.ok) {
+    const message = data.error?.message || `Request failed with status ${res.status}`;
+    const error = new Error(message);
+    error.code = data.error?.code || 'UNKNOWN_ERROR';
+    error.status = res.status;
+    throw error;
+  }
+
+  return data;
 }
 
-function generateUuid() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
+// --- Auth Endpoints ---
+
+export async function signup({ email, password, name, role = 'attendee' }) {
+  return request('/api/auth/signup', {
+    method: 'POST',
+    body: { email, password, name, role },
   });
 }
 
-/**
- * List, filter and sort public published events.
- * Matches the shape of GET /api/events
- */
+export async function login({ email, password }) {
+  return request('/api/auth/login', {
+    method: 'POST',
+    body: { email, password },
+  });
+}
+
+export async function getMe() {
+  return request('/api/auth/me');
+}
+
+// --- Events Endpoints ---
+
 export async function listEvents({ q, city, maxPriceCents, sort = 'date' } = {}) {
-  // Simulate small network delay
-  await new Promise((resolve) => setTimeout(resolve, 50));
-
-  let results = eventsStore
-    .filter((e) => e.status === 'published')
-    .map((e) => {
-      const tiers = e.tiers || [];
-      const minPriceCents =
-        tiers.length > 0 ? Math.min(...tiers.map((t) => t.priceCents)) : 0;
-      const totalSeatsLeft = tiers.reduce(
-        (sum, t) => sum + Math.max(0, t.capacity - t.sold),
-        0
-      );
-
-      return {
-        id: e.id,
-        title: e.title,
-        city: e.city,
-        venue: e.venue,
-        startsAt: e.startsAt,
-        status: e.status,
-        tierCount: tiers.length,
-        minPriceCents,
-        seatsLeft: totalSeatsLeft,
-      };
-    });
-
-  // 1. Text filter (search query)
-  if (q && q.trim() !== '') {
-    const query = q.trim().toLowerCase();
-    results = results.filter(
-      (e) =>
-        e.title.toLowerCase().includes(query) ||
-        (e.venue && e.venue.toLowerCase().includes(query))
-    );
-  }
-
-  // 2. City filter
-  if (city && city.trim() !== '') {
-    const targetCity = city.trim().toLowerCase();
-    results = results.filter((e) => e.city.toLowerCase() === targetCity);
-  }
-
-  // 3. Max price filter
+  const params = new URLSearchParams();
+  if (q) params.set('q', q);
+  if (city) params.set('city', city);
   if (maxPriceCents !== undefined && maxPriceCents !== null && maxPriceCents !== '') {
-    const max = Number(maxPriceCents);
-    results = results.filter((e) => e.minPriceCents <= max);
+    params.set('maxPriceCents', maxPriceCents);
   }
+  if (sort) params.set('sort', sort);
 
-  // 4. Sorting
-  if (sort === 'price') {
-    results.sort((a, b) => a.minPriceCents - b.minPriceCents);
-  } else if (sort === 'availability') {
-    results.sort((a, b) => b.seatsLeft - a.seatsLeft);
-  } else {
-    // Default: date
-    results.sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
-  }
-
-  return results;
+  const queryString = params.toString() ? `?${params.toString()}` : '';
+  return request(`/api/events${queryString}`);
 }
 
-/**
- * Retrieve an event by id including its ticket tiers.
- */
 export async function getEvent(id) {
-  await new Promise((resolve) => setTimeout(resolve, 50));
-  const event = eventsStore.find((e) => e.id === id);
-  if (!event) {
-    const error = new Error('Event not found');
-    error.code = 'NOT_FOUND';
-    throw error;
-  }
-  return JSON.parse(JSON.stringify(event));
+  return request(`/api/events/${encodeURIComponent(id)}`);
 }
 
-/**
- * Create a pending booking for a given ticket tier.
- * Matches POST /api/bookings
- */
-export async function createBooking({ tierId, quantity, userId = 'attendee-1' }) {
-  await new Promise((resolve) => setTimeout(resolve, 60));
-
-  let matchedEvent = null;
-  let matchedTier = null;
-
-  for (const event of eventsStore) {
-    for (const tier of event.tiers) {
-      if (tier.id === tierId) {
-        matchedEvent = event;
-        matchedTier = tier;
-        break;
-      }
-    }
-    if (matchedTier) break;
-  }
-
-  if (!matchedTier) {
-    const error = new Error('Ticket tier not found');
-    error.code = 'NOT_FOUND';
-    throw error;
-  }
-
-  const seatsLeft = matchedTier.capacity - matchedTier.sold;
-  if (seatsLeft < quantity) {
-    const error = new Error(`${matchedTier.name} is sold out or has insufficient seats`);
-    error.code = 'SOLD_OUT';
-    throw error;
-  }
-
-  // Hold seats
-  matchedTier.sold += quantity;
-
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + 5 * 60 * 1000).toISOString(); // 5 min hold
-  const reference = generateReference();
-
-  const booking = {
-    id: generateUuid(),
-    reference,
-    userId,
-    tierId: matchedTier.id,
-    eventId: matchedEvent.id,
-    tierName: matchedTier.name,
-    eventTitle: matchedEvent.title,
-    quantity,
-    amountCents: matchedTier.priceCents * quantity,
-    status: 'pending',
-    createdAt: now.toISOString(),
-    expiresAt,
-  };
-
-  bookingsStore.set(reference, booking);
-  return { ...booking };
+export async function createEvent({ title, city, venue, startsAt }) {
+  return request('/api/events', {
+    method: 'POST',
+    body: { title, city, venue, startsAt },
+  });
 }
 
-/**
- * Pay for a booking (mock payment).
- * Matches POST /api/bookings/:reference/pay
- */
-export async function pay(reference, { userId = 'attendee-1', shouldDecline = false } = {}) {
-  await new Promise((resolve) => setTimeout(resolve, 100));
+export async function addTier(eventId, { name, priceCents, capacity }) {
+  return request(`/api/events/${encodeURIComponent(eventId)}/tiers`, {
+    method: 'POST',
+    body: { name, priceCents, capacity },
+  });
+}
 
-  const booking = bookingsStore.get(reference);
-  if (!booking) {
-    const error = new Error('Booking not found');
-    error.code = 'NOT_FOUND';
-    throw error;
-  }
+export async function publishEvent(eventId) {
+  return request(`/api/events/${encodeURIComponent(eventId)}/publish`, {
+    method: 'POST',
+  });
+}
 
-  if (booking.status === 'paid') {
-    const error = new Error('Booking is already paid');
-    error.code = 'INVALID_TRANSITION';
-    throw error;
-  }
+export async function unpublishEvent(eventId) {
+  return request(`/api/events/${encodeURIComponent(eventId)}/unpublish`, {
+    method: 'POST',
+  });
+}
 
-  if (shouldDecline) {
-    const error = new Error('Your card was declined. Please check the card details and try again.');
-    error.code = 'PAYMENT_DECLINED';
-    throw error;
-  }
+export async function listOrganizerEvents() {
+  return request('/api/organizer/events');
+}
 
-  booking.status = 'paid';
-  booking.transactionId = generateUuid();
-  booking.paidAt = new Date().toISOString();
+// --- Bookings Endpoints ---
 
-  return { ...booking };
+export async function createBooking({ tierId, quantity }) {
+  return request('/api/bookings', {
+    method: 'POST',
+    body: { tierId, quantity },
+  });
+}
+
+export async function listMyBookings() {
+  return request('/api/bookings');
+}
+
+export async function getBooking(reference) {
+  return request(`/api/bookings/${encodeURIComponent(reference)}`);
+}
+
+export async function pay(reference, { shouldDecline = false } = {}) {
+  return request(`/api/bookings/${encodeURIComponent(reference)}/pay`, {
+    method: 'POST',
+    body: { shouldDecline },
+  });
+}
+
+export async function cancelBooking(reference) {
+  return request(`/api/bookings/${encodeURIComponent(reference)}/cancel`, {
+    method: 'POST',
+  });
 }

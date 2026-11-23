@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Tickets - EventPass</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-container">
+      <a href="/" class="site-title">
+        <span>🎟️ EventPass</span>
+      </a>
+      <nav id="site-nav" style="display: flex; gap: 0.75rem; align-items: center;">
+        <a href="/" class="btn btn-sm btn-secondary">Browse Events</a>
+        <button id="logout-btn" class="btn btn-sm btn-secondary">Log Out</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header style="margin-bottom: 2rem;">
+      <h1>My Tickets & Bookings</h1>
+      <p>View your booked tickets, pending checkouts, and reference codes.</p>
+    </header>
+
+    <div id="status-container" style="text-align: center; padding: 2rem;"></div>
+    <div id="bookings-list" style="display: flex; flex-direction: column; gap: 1.5rem;"></div>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 EventPass Ticketing. Course Capstone Project.</p>
+  </footer>
+
+  <script type="module" src="/js/pages/tickets.js"></script>
+</body>
+</html>

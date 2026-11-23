@@ -121,4 +121,9 @@ export class BookingService {
     if (!booking) throw new DomainError('NOT_FOUND', 'Booking not found');
     return booking;
   }
+
+  async listUserBookings(userId) {
+    if (!userId) return [];
+    return await this.#repo.listBookingsByUserId(userId);
+  }
 }

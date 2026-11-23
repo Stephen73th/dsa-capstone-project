@@ -7,6 +7,8 @@ export class MemoryRepository {
   #tiers = new Map();
   #bookings = new Map();
   #bookingsByReference = new Map();
+  #users = new Map();
+  #usersByEmail = new Map();
 
   // --- Events ---
   async saveEvent(event) {
@@ -65,5 +67,37 @@ export class MemoryRepository {
     booking.status = status;
     this.#bookings.set(booking.id, { ...booking });
     return { ...booking };
+  }
+
+  // --- Users ---
+  async saveUser(user) {
+    this.#users.set(user.id, { ...user });
+    if (user.email) {
+      this.#usersByEmail.set(user.email.toLowerCase(), { ...user });
+    }
+    return { ...user };
+  }
+
+  async findUserById(id) {
+    const user = this.#users.get(id);
+    return user ? { ...user } : null;
+  }
+
+  async findUserByEmail(email) {
+    if (!email) return null;
+    const user = this.#usersByEmail.get(email.toLowerCase().trim());
+    return user ? { ...user } : null;
+  }
+
+  async listBookingsByUserId(userId) {
+    return Array.from(this.#bookings.values())
+      .filter((b) => b.userId === userId)
+      .map((b) => ({ ...b }));
+  }
+
+  async listEventsByOrganizerId(organizerId) {
+    return Array.from(this.#events.values())
+      .filter((e) => e.organizerId === organizerId)
+      .map((e) => ({ ...e }));
   }
 }

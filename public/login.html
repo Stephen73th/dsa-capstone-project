@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login & Signup - EventPass</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-container">
+      <a href="/" class="site-title">
+        <span>🎟️ EventPass</span>
+      </a>
+      <nav id="site-nav">
+        <a href="/" class="btn btn-sm btn-secondary">&larr; Back to Events</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container" style="max-width: 480px; margin-top: 3rem;">
+    <div style="background: #ffffff; padding: 2rem; border-radius: var(--radius); border: 1px solid var(--gray-200); box-shadow: var(--shadow);">
+      
+      <!-- Tab Controls -->
+      <div style="display: flex; border-bottom: 2px solid var(--gray-200); margin-bottom: 1.5rem;">
+        <button id="tab-login" type="button" class="btn" style="flex: 1; border-radius: 0; border-bottom: 3px solid var(--primary); font-weight: 700; color: var(--primary);">
+          Log In
+        </button>
+        <button id="tab-signup" type="button" class="btn" style="flex: 1; border-radius: 0; border-bottom: 3px solid transparent; color: var(--gray-600);">
+          Sign Up
+        </button>
+      </div>
+
+      <!-- Error / Status banner -->
+      <div id="auth-error-banner" role="alert" style="display: none; margin-bottom: 1rem;" class="error-banner"></div>
+
+      <!-- Login Form -->
+      <form id="login-form">
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label for="login-email">Email Address</label>
+          <input type="text" id="login-email" required placeholder="you@example.com" autocomplete="email">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" required placeholder="••••••••" autocomplete="current-password">
+        </div>
+
+        <button type="submit" id="login-btn" class="btn btn-primary" style="width: 100%; padding: 0.75rem;">
+          Log In
+        </button>
+      </form>
+
+      <!-- Signup Form -->
+      <form id="signup-form" style="display: none;">
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label for="signup-name">Full Name or Organization</label>
+          <input type="text" id="signup-name" required placeholder="e.g. Ada Lovelace" autocomplete="name">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label for="signup-email">Email Address</label>
+          <input type="text" id="signup-email" required placeholder="you@example.com" autocomplete="email">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label for="signup-password">Password (8+ characters)</label>
+          <input type="password" id="signup-password" minlength="8" required placeholder="••••••••" autocomplete="new-password">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label for="signup-role">Account Type</label>
+          <select id="signup-role" required>
+            <option value="attendee">Attendee (Browse & Book Tickets)</option>
+            <option value="organizer">Organizer (Create & Publish Events)</option>
+          </select>
+        </div>
+
+        <button type="submit" id="signup-btn" class="btn btn-primary" style="width: 100%; padding: 0.75rem;">
+          Create Account
+        </button>
+      </form>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 EventPass Ticketing. Course Capstone Project.</p>
+  </footer>
+
+  <script type="module" src="/js/pages/login.js"></script>
+</body>
+</html>

@@ -3,6 +3,7 @@
 
 import { getEvent, createBooking, pay } from '../api.js';
 import { el, formatPrice, formatDate } from '../ui.js';
+import { getUser, clearSession } from '../session.js';
 
 const statusContainer = document.getElementById('status-container');
 const eventInfoSection = document.getElementById('event-info-section');
@@ -10,6 +11,43 @@ const tiersSection = document.getElementById('tiers-section');
 const tiersList = document.getElementById('tiers-list');
 const checkoutSection = document.getElementById('checkout-section');
 const checkoutContent = document.getElementById('checkout-content');
+const siteNav = document.getElementById('site-nav');
+
+function setupNavigation() {
+  if (!siteNav) return;
+  const user = getUser();
+  if (user) {
+    if (user.role === 'organizer') {
+      siteNav.appendChild(
+        el('a', { href: '/organizer.html', className: 'btn btn-sm btn-primary' }, 'Organizer Dashboard')
+      );
+    } else {
+      siteNav.appendChild(
+        el('a', { href: '/tickets.html', className: 'btn btn-sm btn-primary' }, 'My Tickets')
+      );
+    }
+
+    const logoutBtn = el(
+      'button',
+      {
+        type: 'button',
+        className: 'btn btn-sm btn-secondary',
+        onClick: () => {
+          clearSession();
+          window.location.reload();
+        },
+      },
+      'Log Out'
+    );
+    siteNav.appendChild(logoutBtn);
+  } else {
+    siteNav.appendChild(
+      el('a', { href: `/login.html?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`, className: 'btn btn-sm btn-primary' }, 'Log In / Sign Up')
+    );
+  }
+}
+
+setupNavigation();
 
 let currentEvent = null;
 let currentCountdownInterval = null;
@@ -102,6 +140,13 @@ function renderTiers(tiers) {
 }
 
 async function handleBooking(tierId, quantity) {
+  const user = getUser();
+  if (!user) {
+    const currentUrl = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.href = `/login.html?redirect=${currentUrl}`;
+    return;
+  }
+
   try {
     checkoutSection.style.display = 'block';
     checkoutContent.replaceChildren(

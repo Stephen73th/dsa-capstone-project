@@ -24,5 +24,12 @@ export function createDatabase(dbPath = process.env.DB_PATH || DEFAULT_DB_PATH) 
   const schemaSql = readFileSync(SCHEMA_PATH, 'utf-8');
   db.exec(schemaSql);
 
+  // Safe migration for existing databases: ensure password_hash column exists
+  try {
+    db.exec('ALTER TABLE users ADD COLUMN password_hash TEXT;');
+  } catch {
+    // Column already exists
+  }
+
   return db;
 }

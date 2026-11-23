@@ -3,6 +3,7 @@
 
 import { listEvents } from '../api.js';
 import { el, formatPrice, formatDate } from '../ui.js';
+import { getUser, clearSession } from '../session.js';
 
 const searchInput = document.getElementById('search-input');
 const citySelect = document.getElementById('city-select');
@@ -11,6 +12,43 @@ const sortSelect = document.getElementById('sort-select');
 const resetBtn = document.getElementById('reset-filters-btn');
 const gridContainer = document.getElementById('events-grid');
 const statusMessage = document.getElementById('status-message');
+const siteNav = document.getElementById('site-nav');
+
+function setupNavigation() {
+  if (!siteNav) return;
+  const user = getUser();
+  if (user) {
+    if (user.role === 'organizer') {
+      siteNav.appendChild(
+        el('a', { href: '/organizer.html', className: 'btn btn-sm btn-primary' }, 'Organizer Dashboard')
+      );
+    } else {
+      siteNav.appendChild(
+        el('a', { href: '/tickets.html', className: 'btn btn-sm btn-primary' }, 'My Tickets')
+      );
+    }
+
+    const logoutBtn = el(
+      'button',
+      {
+        type: 'button',
+        className: 'btn btn-sm btn-secondary',
+        onClick: () => {
+          clearSession();
+          window.location.reload();
+        },
+      },
+      'Log Out'
+    );
+    siteNav.appendChild(logoutBtn);
+  } else {
+    siteNav.appendChild(
+      el('a', { href: '/login.html', className: 'btn btn-sm btn-primary' }, 'Log In / Sign Up')
+    );
+  }
+}
+
+setupNavigation();
 
 function createEventCard(event) {
   const isSoldOut = event.seatsLeft <= 0;

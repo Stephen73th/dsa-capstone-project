@@ -49,5 +49,13 @@ Every time you give an AI tool a significant prompt, add an entry. Three lines e
 - **What came back:** Complete client application with clean CSS styling, strictly safe DOM creation avoiding `innerHTML`, price formatting (`250000 -> ₦2,500`), sold-out tier disabling, hold timer countdown, and mock payment decline handling.
 - **What was wrong (or "nothing"):** Added automated tests in `test/ui.test.js` covering price formatting and all mock API client functions, and verified that sold-out tiers disable their booking buttons and display explicit "Sold Out" badges.
 
+## Build 7
+
+### Prompt 1: Build 7 prompt (docs/build-7.md)
+- **What I asked:** Implement authentication and role-based access control with scrypt password hashing (`src/lib/password.js`), HS256 JWT tokens (`src/lib/token.js`), `AuthService`, HTTP authorization guards (`src/http/guards.js`), real API client with `fetch`, `login.html`, `tickets.html`, and `organizer.html`, plus comprehensive tests.
+- **What came back:** Secure password hashing with per-password salt and constant-time comparison, HS256 token verification rejecting non-HS256 algorithms and expired tokens, role checks, ownership barriers, and connected frontend pages.
+- **What was wrong (or "nothing"):** Added missing status codes (`UNAUTHENTICATED: 401`, `INVALID_CREDENTIALS: 401`, `EMAIL_TAKEN: 409`) to `DOMAIN_STATUS_MAP` in `app.js`, and verified that querying another attendee's booking returns `NOT_FOUND` rather than leaking existence.
+
+
 
 

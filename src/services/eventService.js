@@ -120,4 +120,9 @@ export class EventService {
 
     return searchEvents(summaries, criteria, sort);
   }
+
+  async listOrganizerEvents(organizerId) {
+    if (!organizerId) return [];
+    return await this.#repo.listEventsByOrganizerId(organizerId);
+  }
 }
