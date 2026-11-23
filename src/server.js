@@ -3,12 +3,14 @@
 
 import { createApp } from './http/app.js';
 import { config } from './config.js';
-import { MemoryRepository } from './repositories/memory.js';
+import { createDatabase } from './db/connection.js';
+import { SqliteRepository } from './repositories/sqlite.js';
 import { MockPaymentGateway } from './lib/mockPaymentGateway.js';
 import { EventService } from './services/eventService.js';
 import { BookingService } from './services/bookingService.js';
 
-const repository = new MemoryRepository();
+const db = createDatabase();
+const repository = new SqliteRepository(db);
 const paymentGateway = new MockPaymentGateway();
 const eventService = new EventService(repository);
 const bookingService = new BookingService(repository, paymentGateway);
@@ -22,7 +24,8 @@ server.listen(config.port, () => {
 function shutdown() {
   console.log('\nShutting down server...');
   server.close(() => {
-    console.log('Server stopped.');
+    db.close();
+    console.log('Server stopped and database connection closed.');
     process.exit(0);
   });
 }
