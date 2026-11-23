@@ -42,4 +42,12 @@ Every time you give an AI tool a significant prompt, add an entry. Three lines e
 - **What came back:** Atomic SQL reservation in `SqliteRepository`, `test/oversell.test.js` validating 50 concurrent requests yielding exactly 1 success and 49 `SOLD_OUT`, and an updated demo script printing before-and-after results.
 - **What was wrong (or "nothing"):** Nothing; ensured `updateTierSold` releases seats safely when `soldDelta < 0` (e.g. during cancellation/refunds) without going below 0.
 
+## Build 6
+
+### Prompt 1: Build 6 prompt (docs/build-6.md)
+- **What I asked:** Build a website in plain HTML, CSS, and browser ES modules without frameworks: `public/index.html` (event catalog with search, filter, sort), `public/event.html` (tiers, quantity picker, checkout with countdown timer, and mock card payment with decline retry), `public/js/ui.js` with safe `el()` helper, `public/js/mockData.js`, and `public/js/api.js`.
+- **What came back:** Complete client application with clean CSS styling, strictly safe DOM creation avoiding `innerHTML`, price formatting (`250000 -> ₦2,500`), sold-out tier disabling, hold timer countdown, and mock payment decline handling.
+- **What was wrong (or "nothing"):** Added automated tests in `test/ui.test.js` covering price formatting and all mock API client functions, and verified that sold-out tiers disable their booking buttons and display explicit "Sold Out" badges.
+
+
 
