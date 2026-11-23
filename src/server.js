@@ -8,14 +8,16 @@ import { SqliteRepository } from './repositories/sqlite.js';
 import { MockPaymentGateway } from './lib/mockPaymentGateway.js';
 import { EventService } from './services/eventService.js';
 import { BookingService } from './services/bookingService.js';
+import { AuthService } from './services/authService.js';
 
 const db = createDatabase();
 const repository = new SqliteRepository(db);
 const paymentGateway = new MockPaymentGateway();
 const eventService = new EventService(repository);
 const bookingService = new BookingService(repository, paymentGateway);
+const authService = new AuthService(repository);
 
-const { server } = createApp({ eventService, bookingService });
+const { server } = createApp({ eventService, bookingService, authService });
 
 server.listen(config.port, () => {
   console.log(`Server listening on http://localhost:${config.port}`);

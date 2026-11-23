@@ -4,6 +4,7 @@
 
 import { createDatabase } from '../src/db/connection.js';
 import { SqliteRepository } from '../src/repositories/sqlite.js';
+import { hashPassword } from '../src/lib/password.js';
 
 const db = createDatabase();
 const repo = new SqliteRepository(db);
@@ -11,16 +12,18 @@ const repo = new SqliteRepository(db);
 async function seed() {
   console.log('Seeding SQLite database...');
 
+  const defaultPasswordHash = await hashPassword('password123');
+
   // Ensure default users exist
   db.prepare(
-    `INSERT OR IGNORE INTO users (id, name, email, role)
-     VALUES (?, ?, ?, ?)`
-  ).run('organizer-1', 'Tech Events Nigeria', 'organizer@techevents.ng', 'organizer');
+    `INSERT OR IGNORE INTO users (id, name, email, password_hash, role)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run('organizer-1', 'Tech Events Nigeria', 'organizer@techevents.ng', defaultPasswordHash, 'organizer');
 
   db.prepare(
-    `INSERT OR IGNORE INTO users (id, name, email, role)
-     VALUES (?, ?, ?, ?)`
-  ).run('attendee-1', 'Ada Lovelace', 'ada@example.com', 'attendee');
+    `INSERT OR IGNORE INTO users (id, name, email, password_hash, role)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run('attendee-1', 'Ada Lovelace', 'ada@example.com', defaultPasswordHash, 'attendee');
 
   // Check if events already exist
   const existingEvents = await repo.listEvents();

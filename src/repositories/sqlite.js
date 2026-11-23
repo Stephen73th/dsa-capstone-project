@@ -236,4 +236,82 @@ export class SqliteRepository {
       .get(tierId);
     return row.count;
   }
+
+  // --- Users ---
+  async saveUser(user) {
+    const existing = this.#db.prepare('SELECT id FROM users WHERE id = ?').get(user.id);
+    if (existing) {
+      this.#db
+        .prepare('UPDATE users SET name = ?, email = ?, password_hash = ?, role = ? WHERE id = ?')
+        .run(user.name, user.email, user.passwordHash || null, user.role, user.id);
+    } else {
+      this.#db
+        .prepare('INSERT INTO users (id, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?)')
+        .run(user.id, user.name, user.email, user.passwordHash || null, user.role);
+    }
+    return this.findUserById(user.id);
+  }
+
+  async findUserById(id) {
+    const row = this.#db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+    if (!row) return null;
+    return {
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      passwordHash: row.password_hash,
+      role: row.role,
+    };
+  }
+
+  async findUserByEmail(email) {
+    if (!email) return null;
+    const row = this.#db.prepare('SELECT * FROM users WHERE LOWER(email) = LOWER(?)').get(email.trim());
+    if (!row) return null;
+    return {
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      passwordHash: row.password_hash,
+      role: row.role,
+    };
+  }
+
+  async listBookingsByUserId(userId) {
+    const rows = this.#db
+      .prepare('SELECT * FROM bookings WHERE user_id = ? ORDER BY created_at DESC')
+      .all(userId);
+    return rows.map((row) => ({
+      id: row.id,
+      reference: row.reference,
+      userId: row.user_id,
+      tierId: row.tier_id,
+      eventId: row.event_id,
+      quantity: row.quantity,
+      amountCents: row.amount_cents,
+      status: row.status,
+      transactionId: row.transaction_id,
+      paidAt: row.paid_at,
+      createdAt: row.created_at,
+    }));
+  }
+
+  async listEventsByOrganizerId(organizerId) {
+    const rows = this.#db
+      .prepare('SELECT * FROM events WHERE organizer_id = ? ORDER BY starts_at ASC')
+      .all(organizerId);
+    return rows.map((row) => {
+      const tiers = this.#db.prepare('SELECT id FROM ticket_tiers WHERE event_id = ?').all(row.id);
+      return {
+        id: row.id,
+        organizerId: row.organizer_id,
+        title: row.title,
+        city: row.city,
+        venue: row.venue,
+        startsAt: row.starts_at,
+        status: row.status,
+        tierIds: tiers.map((t) => t.id),
+      };
+    });
+  }
 }

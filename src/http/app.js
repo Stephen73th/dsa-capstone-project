@@ -29,7 +29,10 @@ const DOMAIN_STATUS_MAP = {
   PAYMENT_DECLINED: 400,
   NOT_SOLD_OUT: 400,
   UNAUTHORIZED: 401,
+  UNAUTHENTICATED: 401,
+  INVALID_CREDENTIALS: 401,
   FORBIDDEN: 403,
+  EMAIL_TAKEN: 409,
 };
 
 export function sendJson(res, statusCode, data) {
@@ -67,6 +70,7 @@ export function createApp({
   router = new Router(),
   eventService,
   bookingService,
+  authService,
 } = {}) {
   // Built-in health check route
   router.get('/health', async ({ res }) => {
@@ -74,7 +78,7 @@ export function createApp({
   });
 
   if (eventService && bookingService) {
-    registerRoutes(router, { eventService, bookingService });
+    registerRoutes(router, { eventService, bookingService, authService });
   }
 
   const app = createServer(async (req, res) => {
