@@ -28,6 +28,10 @@ const DOMAIN_STATUS_MAP = {
   INVALID_TRANSITION: 409,
   PAYMENT_DECLINED: 400,
   NOT_SOLD_OUT: 400,
+  BOOKING_EXPIRED: 410,
+  OFFER_EXPIRED: 410,
+  OFFER_NOT_FOUND: 404,
+  ALREADY_ON_WAITLIST: 409,
   UNAUTHORIZED: 401,
   UNAUTHENTICATED: 401,
   INVALID_CREDENTIALS: 401,
@@ -71,6 +75,7 @@ export function createApp({
   eventService,
   bookingService,
   authService,
+  waitlistService,
 } = {}) {
   // Built-in health check route
   router.get('/health', async ({ res }) => {
@@ -78,7 +83,7 @@ export function createApp({
   });
 
   if (eventService && bookingService) {
-    registerRoutes(router, { eventService, bookingService, authService });
+    registerRoutes(router, { eventService, bookingService, authService, waitlistService });
   }
 
   const app = createServer(async (req, res) => {

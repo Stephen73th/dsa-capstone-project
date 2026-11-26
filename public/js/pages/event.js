@@ -1,7 +1,7 @@
 // Event Detail and Booking/Checkout controller.
 // Handles tier selection, ticket booking, hold countdown timer, and mock payment with retry.
 
-import { getEvent, createBooking, pay } from '../api.js';
+import { getEvent, createBooking, pay, joinWaitlist } from '../api.js';
 import { el, formatPrice, formatDate } from '../ui.js';
 import { getUser, clearSession } from '../session.js';
 
@@ -93,17 +93,34 @@ function renderTiers(tiers) {
     const controls = el('div', { className: 'tier-booking-controls' });
 
     if (isSoldOut) {
-      controls.appendChild(
-        el(
-          'button',
-          {
-            type: 'button',
-            className: 'btn btn-secondary',
-            disabled: true,
+      const waitlistBtn = el(
+        'button',
+        {
+          type: 'button',
+          className: 'btn btn-secondary',
+          onClick: async () => {
+            const user = getUser();
+            if (!user) {
+              const currentUrl = encodeURIComponent(window.location.pathname + window.location.search);
+              window.location.href = `/login.html?redirect=${currentUrl}`;
+              return;
+            }
+            try {
+              waitlistBtn.disabled = true;
+              waitlistBtn.textContent = 'Joining...';
+              await joinWaitlist({ tierId: tier.id, eventId: currentEvent.id });
+              waitlistBtn.textContent = 'On Waitlist';
+              alert('You have joined the waitlist! If a ticket becomes available, you will receive an offer in My Tickets.');
+            } catch (err) {
+              alert(err.message || 'Failed to join waitlist');
+              waitlistBtn.disabled = false;
+              waitlistBtn.textContent = 'Join Waitlist';
+            }
           },
-          'Sold Out'
-        )
+        },
+        'Join Waitlist'
       );
+      controls.appendChild(waitlistBtn);
     } else {
       const selectId = `qty-${tier.id}`;
       const qtyOptions = [];

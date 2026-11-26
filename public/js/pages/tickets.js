@@ -1,8 +1,8 @@
 // My Tickets page controller.
-// Displays the authenticated attendee's bookings and tickets.
+// Displays the authenticated attendee's bookings and active waitlist offers.
 
 import { requireAuth, clearSession } from '../session.js';
-import { listMyBookings, pay, cancelBooking } from '../api.js';
+import { listMyBookings, listMyOffers, pay, cancelBooking, acceptOffer } from '../api.js';
 import { el, formatPrice, formatDate } from '../ui.js';
 
 const user = requireAuth();
@@ -22,18 +22,31 @@ function getStatusBadge(status) {
     case 'paid':
       return el('span', { className: 'badge badge-success' }, 'Paid & Confirmed');
     case 'pending':
-      return el('span', { className: 'badge badge-danger', style: 'background: var(--warning-bg); color: var(--warning); border-color: #fde68a;' }, 'Pending Payment');
+      return el('span', {
+        className: 'badge badge-danger',
+        style: 'background: var(--warning-bg); color: var(--warning); border-color: #fde68a;',
+      }, 'Pending Payment');
     case 'cancelled':
       return el('span', { className: 'badge badge-danger' }, 'Cancelled');
+    case 'refunded':
+      return el('span', { className: 'badge' }, 'Refunded');
     default:
       return el('span', { className: 'badge' }, status);
   }
 }
 
+/** Compute the refund percentage label shown on the cancel confirmation. */
+function refundLabel(booking) {
+  if (booking.status !== 'paid' || !booking.amountCents) return null;
+  // The server calculates the exact amount; show a helpful estimate.
+  return `Note: A partial refund may apply depending on the event date.`;
+}
+
 function createBookingCard(booking) {
   const isPending = booking.status === 'pending';
+  const isPaid = booking.status === 'paid';
 
-  const actions = el('div', { style: 'display: flex; gap: 0.5rem; margin-top: 1rem;' });
+  const actions = el('div', { style: 'display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;' });
 
   if (isPending) {
     const payBtn = el(
@@ -79,6 +92,43 @@ function createBookingCard(booking) {
     actions.appendChild(cancelBtn);
   }
 
+  if (isPaid) {
+    const hint = refundLabel(booking);
+    const cancelBtn = el(
+      'button',
+      {
+        type: 'button',
+        className: 'btn btn-secondary btn-sm',
+        onClick: async () => {
+          const msg = hint
+            ? `Cancel this booking?\n\n${hint}`
+            : 'Are you sure you want to cancel this booking?';
+          if (!confirm(msg)) return;
+          try {
+            const result = await cancelBooking(booking.reference);
+            if (result.refundCents > 0) {
+              alert(`Booking cancelled. Refund of ${formatPrice(result.refundCents)} will be processed.`);
+            } else {
+              alert('Booking cancelled. No refund applies based on the event date.');
+            }
+            loadBookings();
+          } catch (err) {
+            alert(err.message || 'Cancellation failed');
+          }
+        },
+      },
+      'Cancel & Refund'
+    );
+    actions.appendChild(cancelBtn);
+  }
+
+  // Show refund info if already cancelled with a refund
+  const refundInfo =
+    booking.status === 'cancelled' && booking.refundCents > 0
+      ? el('p', { style: 'color: var(--success); margin: 0.25rem 0 0;' },
+          `Refunded: ${formatPrice(booking.refundCents)}`)
+      : null;
+
   return el(
     'article',
     {
@@ -93,6 +143,7 @@ function createBookingCard(booking) {
         ]),
         el('h2', { style: 'font-size: 1.25rem; margin-bottom: 0.25rem;' }, `Reference: ${booking.reference}`),
         el('p', { style: 'margin: 0; color: var(--gray-700);' }, `${booking.quantity} Ticket(s) • Total: ${formatPrice(booking.amountCents)}`),
+        ...(refundInfo ? [refundInfo] : []),
         actions,
       ]),
       el(
@@ -111,15 +162,73 @@ function createBookingCard(booking) {
   );
 }
 
+function createOfferCard(offer) {
+  const expiresIn = Math.max(0, Math.round((new Date(offer.expiresAt) - Date.now()) / 60000));
+
+  const acceptBtn = el(
+    'button',
+    {
+      type: 'button',
+      className: 'btn btn-primary btn-sm',
+      onClick: async () => {
+        acceptBtn.disabled = true;
+        acceptBtn.textContent = 'Accepting...';
+        try {
+          await acceptOffer(offer.id);
+          alert('Offer accepted! A pending booking has been created. Go pay for it now.');
+          loadBookings();
+        } catch (err) {
+          alert(err.message || 'Failed to accept offer');
+          acceptBtn.disabled = false;
+          acceptBtn.textContent = 'Accept Offer';
+        }
+      },
+    },
+    'Accept Offer'
+  );
+
+  return el(
+    'article',
+    {
+      style:
+        'background: #fff7ed; border: 1px solid #fed7aa; border-radius: var(--radius); padding: 1.25rem; box-shadow: var(--shadow-sm);',
+    },
+    [
+      el('div', { style: 'display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;' }, [
+        el('span', { style: 'font-size: 1.25rem;' }, '🎟️'),
+        el('strong', {}, 'Waitlist Offer'),
+        el('span', { className: 'badge', style: 'background: #fed7aa; color: #9a3412;' },
+          `Expires in ${expiresIn} min`),
+      ]),
+      el('p', { style: 'margin: 0 0 0.75rem;' },
+        offer.eventTitle
+          ? `${offer.eventTitle} — ${offer.tierName || ''}`
+          : `Tier ID: ${offer.tierId}`),
+      acceptBtn,
+    ]
+  );
+}
+
 async function loadBookings() {
   statusContainer.textContent = 'Loading your tickets...';
   bookingsList.replaceChildren();
 
   try {
-    const bookings = await listMyBookings();
+    const [bookings, offers] = await Promise.all([listMyBookings(), listMyOffers()]);
     statusContainer.textContent = '';
 
-    if (bookings.length === 0) {
+    // Show active waitlist offers at the top
+    if (offers.length > 0) {
+      bookingsList.appendChild(
+        el('h3', { style: 'margin-bottom: 0.75rem; color: var(--accent);' }, '🎉 You have waitlist offers!')
+      );
+      for (const offer of offers) {
+        bookingsList.appendChild(createOfferCard(offer));
+      }
+      bookingsList.appendChild(el('hr', { style: 'margin: 1.5rem 0;' }));
+    }
+
+    if (bookings.length === 0 && offers.length === 0) {
       statusContainer.replaceChildren(
         el('div', {}, [
           el('h3', {}, 'You have not booked any tickets yet.'),

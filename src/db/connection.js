@@ -31,5 +31,17 @@ export function createDatabase(dbPath = process.env.DB_PATH || DEFAULT_DB_PATH) 
     // Column already exists
   }
 
+  try {
+    db.exec('ALTER TABLE bookings ADD COLUMN refund_cents INTEGER DEFAULT 0;');
+  } catch {
+    // Column already exists
+  }
+
+  try {
+    db.exec('ALTER TABLE bookings ADD COLUMN expires_at TEXT;');
+  } catch {
+    // Column already exists
+  }
+
   return db;
 }

@@ -24,4 +24,15 @@ export class MockPaymentGateway {
       timestamp: new Date().toISOString(),
     };
   }
+
+  async refund({ amountCents, transactionId } = {}) {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    return {
+      success: true,
+      refundId: randomUUID(),
+      amountCents,
+      originalTransactionId: transactionId,
+      timestamp: new Date().toISOString(),
+    };
+  }
 }
