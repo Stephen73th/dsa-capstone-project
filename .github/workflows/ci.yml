@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'build-*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Run Test Suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run automated test suite
+        run: npm test
+        env:
+          JWT_SECRET: test-jwt-secret-do-not-use-in-production-min-32-chars
+          TICKET_SECRET: test-ticket-token-secret-do-not-use-in-production-min-32-chars

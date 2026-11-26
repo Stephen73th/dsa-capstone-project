@@ -21,6 +21,10 @@ function setupNavigation() {
       siteNav.appendChild(
         el('a', { href: '/organizer.html', className: 'btn btn-sm btn-primary' }, 'Organizer Dashboard')
       );
+    } else if (user.role === 'staff') {
+      siteNav.appendChild(
+        el('a', { href: '/checkin.html', className: 'btn btn-sm btn-primary' }, 'Door Check-in')
+      );
     } else {
       siteNav.appendChild(
         el('a', { href: '/tickets.html', className: 'btn btn-sm btn-primary' }, 'My Tickets')

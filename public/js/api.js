@@ -156,3 +156,12 @@ export async function acceptOffer(offerId) {
 export async function listMyOffers() {
   return request('/api/waitlist/offers');
 }
+
+// --- Check-in Endpoints (Staff Only) ---
+
+export async function checkinTicket({ token, eventId }) {
+  return request('/api/checkin', {
+    method: 'POST',
+    body: { token, eventId: eventId || undefined },
+  });
+}

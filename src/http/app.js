@@ -7,6 +7,7 @@ import { resolve, normalize, join, extname } from 'node:path';
 import { Router } from './router.js';
 import { registerRoutes } from './routes.js';
 import { DomainError } from '../domain/errors.js';
+import { applySecurityHeaders } from './securityHeaders.js';
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -32,6 +33,11 @@ const DOMAIN_STATUS_MAP = {
   OFFER_EXPIRED: 410,
   OFFER_NOT_FOUND: 404,
   ALREADY_ON_WAITLIST: 409,
+  INVALID_TOKEN: 400,
+  DUPLICATE_SCAN: 409,
+  WRONG_EVENT: 400,
+  UNPAID_BOOKING: 400,
+  RATE_LIMITED: 429,
   UNAUTHORIZED: 401,
   UNAUTHENTICATED: 401,
   INVALID_CREDENTIALS: 401,
@@ -76,6 +82,7 @@ export function createApp({
   bookingService,
   authService,
   waitlistService,
+  checkinService,
 } = {}) {
   // Built-in health check route
   router.get('/health', async ({ res }) => {
@@ -83,10 +90,13 @@ export function createApp({
   });
 
   if (eventService && bookingService) {
-    registerRoutes(router, { eventService, bookingService, authService, waitlistService });
+    registerRoutes(router, { eventService, bookingService, authService, waitlistService, checkinService });
   }
 
   const app = createServer(async (req, res) => {
+    // Apply standard security headers (CSP, X-Content-Type-Options, Referrer-Policy, Frame protection)
+    applySecurityHeaders(res);
+
     // Enable CORS for testing tools like Hoppscotch / Postman
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');

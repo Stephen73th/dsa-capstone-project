@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff Door Check-in - EventPass</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-container">
+      <a href="/" class="site-title">
+        <span>🎟️ EventPass <span style="font-size: 0.8rem; font-weight: normal; color: var(--gray-600);">(Staff Gate Check-in)</span></span>
+      </a>
+      <nav id="site-nav" style="display: flex; gap: 0.75rem; align-items: center;">
+        <a href="/" class="btn btn-sm btn-secondary">Public Site</a>
+        <button id="logout-btn" class="btn btn-sm btn-secondary">Log Out</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container" style="max-width: 650px; margin: 2rem auto;">
+    <div style="margin-bottom: 2rem;">
+      <h1>Door Check-in & Scanner</h1>
+      <p id="staff-welcome" style="color: var(--gray-600);">Scan QR codes or paste digital ticket pass tokens to admit attendees.</p>
+    </div>
+
+    <!-- Scan & Verification Form -->
+    <section class="card" style="background: #ffffff; padding: 2rem; border-radius: var(--radius); border: 1px solid var(--gray-200); box-shadow: var(--shadow-sm); margin-bottom: 2rem;">
+      <form id="checkin-form">
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label for="event-select">Filter by Event (Optional)</label>
+          <select id="event-select" style="width: 100%; padding: 0.6rem; border: 1px solid var(--gray-300); border-radius: var(--radius);">
+            <option value="">Any Event (Universal Gate)</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label for="token-input">Ticket Token (Paste or Scan QR Code)</label>
+          <textarea id="token-input" rows="3" required placeholder="Paste the signed ticket token from the attendee QR code..." style="width: 100%; font-family: monospace; font-size: 0.85rem; padding: 0.75rem; border: 1px solid var(--gray-300); border-radius: var(--radius); resize: vertical;"></textarea>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem;">
+          <button type="submit" id="scan-btn" class="btn btn-primary" style="flex: 1; padding: 0.75rem 1rem; font-weight: bold;">
+            Scan & Verify Admission
+          </button>
+          <button type="button" id="clear-btn" class="btn btn-secondary">
+            Clear
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Scan Results Output Banner -->
+    <div id="result-container" aria-live="polite"></div>
+  </main>
+
+  <script type="module" src="/js/pages/checkin.js"></script>
+</body>
+</html>

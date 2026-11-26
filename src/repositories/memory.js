@@ -59,7 +59,7 @@ export class MemoryRepository {
 
   // --- Bookings ---
   async saveBooking(booking) {
-    const record = { refundCents: 0, expiresAt: null, ...booking };
+    const record = { refundCents: 0, expiresAt: null, checkedInAt: null, ...booking };
     this.#bookings.set(booking.id, { ...record });
     this.#bookingsByReference.set(booking.reference, { ...record });
     return { ...record };
@@ -77,6 +77,17 @@ export class MemoryRepository {
     this.#bookings.set(booking.id, { ...booking });
     this.#bookingsByReference.set(reference, { ...booking });
     return { ...booking };
+  }
+
+  // Atomic check-in transition from paid → checked_in
+  async checkinBookingAtomic(reference, checkedInAt) {
+    const booking = this.#bookingsByReference.get(reference);
+    if (!booking || booking.status !== 'paid') return false;
+    booking.status = 'checked_in';
+    booking.checkedInAt = checkedInAt;
+    this.#bookings.set(booking.id, { ...booking });
+    this.#bookingsByReference.set(reference, { ...booking });
+    return true;
   }
 
   // Compare-and-set: transitions booking from fromStatus → toStatus atomically.

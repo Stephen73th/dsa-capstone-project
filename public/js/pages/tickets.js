@@ -4,6 +4,17 @@
 import { requireAuth, clearSession } from '../session.js';
 import { listMyBookings, listMyOffers, pay, cancelBooking, acceptOffer } from '../api.js';
 import { el, formatPrice, formatDate } from '../ui.js';
+import { generateQrSvg } from '../qr.js';
+
+function createQrElement(text, size = 130) {
+  try {
+    const svgString = generateQrSvg(text, { size });
+    const doc = new DOMParser().parseFromString(svgString, 'image/svg+xml');
+    return doc.documentElement;
+  } catch {
+    return el('div', { style: 'font-size: 2rem;' }, '📱');
+  }
+}
 
 const user = requireAuth();
 const statusContainer = document.getElementById('status-container');
@@ -129,6 +140,48 @@ function createBookingCard(booking) {
           `Refunded: ${formatPrice(booking.refundCents)}`)
       : null;
 
+  const passSideChildren = [];
+  if (booking.ticketToken && (booking.status === 'paid' || booking.status === 'checked_in')) {
+    passSideChildren.push(
+      el('div', { style: 'margin-bottom: 0.5rem; display: flex; justify-content: center;' }, [
+        createQrElement(booking.ticketToken, 130),
+      ])
+    );
+    passSideChildren.push(
+      el('div', { style: 'font-family: monospace; font-size: 0.85rem; font-weight: bold; letter-spacing: 1px;' }, booking.reference)
+    );
+    passSideChildren.push(
+      el('div', { style: 'font-size: 0.75rem; color: var(--gray-600); margin-bottom: 0.5rem;' }, 'Door Scan QR Pass')
+    );
+    const copyBtn = el(
+      'button',
+      {
+        type: 'button',
+        className: 'btn btn-secondary btn-sm',
+        style: 'font-size: 0.75rem; padding: 0.25rem 0.5rem;',
+        onClick: async () => {
+          try {
+            await navigator.clipboard.writeText(booking.ticketToken);
+            copyBtn.textContent = 'Copied!';
+            setTimeout(() => (copyBtn.textContent = 'Copy Token'), 2000);
+          } catch {
+            prompt('Copy token for check-in terminal:', booking.ticketToken);
+          }
+        },
+      },
+      'Copy Token'
+    );
+    passSideChildren.push(copyBtn);
+  } else {
+    passSideChildren.push(el('div', { style: 'font-size: 2rem; margin-bottom: 0.25rem;' }, '📱'));
+    passSideChildren.push(
+      el('div', { style: 'font-family: monospace; font-size: 0.85rem; font-weight: bold; letter-spacing: 1px;' }, booking.reference)
+    );
+    passSideChildren.push(
+      el('div', { style: 'font-size: 0.75rem; color: var(--gray-600);' }, 'Digital Pass Code')
+    );
+  }
+
   return el(
     'article',
     {
@@ -150,13 +203,9 @@ function createBookingCard(booking) {
         'div',
         {
           style:
-            'background: var(--gray-50); border: 1px dashed var(--gray-300); border-radius: var(--radius); padding: 1rem 1.5rem; text-align: center;',
+            'background: var(--gray-50); border: 1px dashed var(--gray-300); border-radius: var(--radius); padding: 1rem 1.5rem; text-align: center; min-width: 160px;',
         },
-        [
-          el('div', { style: 'font-size: 2rem; margin-bottom: 0.25rem;' }, '📱'),
-          el('div', { style: 'font-family: monospace; font-size: 0.85rem; font-weight: bold; letter-spacing: 1px;' }, booking.reference),
-          el('div', { style: 'font-size: 0.75rem; color: var(--gray-600);' }, 'Digital Pass Code'),
-        ]
+        passSideChildren
       ),
     ]
   );
