@@ -39,8 +39,30 @@ CREATE TABLE IF NOT EXISTS bookings (
   event_id TEXT NOT NULL REFERENCES events(id),
   quantity INTEGER NOT NULL CHECK (quantity >= 1),
   amount_cents INTEGER NOT NULL CHECK (amount_cents >= 0),
+  refund_cents INTEGER DEFAULT 0,
   status TEXT NOT NULL CHECK (status IN ('pending', 'paid', 'cancelled', 'refunded', 'checked_in')),
   transaction_id TEXT,
   paid_at TEXT,
+  expires_at TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS waitlist_entries (
+  id TEXT PRIMARY KEY,
+  tier_id TEXT NOT NULL REFERENCES ticket_tiers(id) ON DELETE CASCADE,
+  event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  created_at TEXT NOT NULL,
+  UNIQUE(tier_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS waitlist_offers (
+  id TEXT PRIMARY KEY,
+  tier_id TEXT NOT NULL REFERENCES ticket_tiers(id) ON DELETE CASCADE,
+  event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  waitlist_entry_id TEXT NOT NULL REFERENCES waitlist_entries(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'accepted', 'expired')),
+  expires_at TEXT NOT NULL,
   created_at TEXT NOT NULL
 );

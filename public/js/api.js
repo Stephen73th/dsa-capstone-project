@@ -137,3 +137,22 @@ export async function cancelBooking(reference) {
     method: 'POST',
   });
 }
+
+// --- Waitlist Endpoints ---
+
+export async function joinWaitlist({ tierId, eventId }) {
+  return request('/api/waitlist', {
+    method: 'POST',
+    body: { tierId, eventId },
+  });
+}
+
+export async function acceptOffer(offerId) {
+  return request(`/api/waitlist/offers/${encodeURIComponent(offerId)}/accept`, {
+    method: 'POST',
+  });
+}
+
+export async function listMyOffers() {
+  return request('/api/waitlist/offers');
+}

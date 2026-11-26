@@ -59,3 +59,9 @@ Every time you give an AI tool a significant prompt, add an entry. Three lines e
 
 
 
+## Build 8
+
+### Prompt 1: Refund policy, booking expiry, waitlists, and background maintenance (docs/build-8.md)
+- **What I asked:** Implement pure refund calculator (`calculateRefund`), controllable `Clock` singleton, atomic compare-and-set paid-booking cancellations with refunds via `MockPaymentGateway.refund`, 5-minute booking hold expiration, FIFO waitlist queue with 15-minute time-limited offers, periodic background maintenance job, UI updates, and comprehensive tests.
+- **What came back:** Complete refund tier engine with boundary handling and `Math.floor` on cents, controllable clock abstraction, atomic seat release, waitlist offer generation and acceptance, background cleanup job, frontend refund warnings and Join Waitlist button, and 20 passing unit/integration tests in `test/refund.test.js`.
+- **What was wrong (or "nothing"):** Removed duplicate waitlist table definitions in `schema.sql`, added `expires_at` migration guard in `connection.js`, fixed `waitlistService.js` to remove expired queue entries so stale offers advance to the next person, and mocked relative fetch in `test/ui.test.js` to ensure clean execution in headless Node test runner.

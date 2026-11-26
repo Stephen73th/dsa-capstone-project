@@ -168,7 +168,8 @@ export class SqliteRepository {
       this.#db
         .prepare(
           `UPDATE bookings
-           SET reference = ?, user_id = ?, tier_id = ?, event_id = ?, quantity = ?, amount_cents = ?, status = ?, transaction_id = ?, paid_at = ?
+           SET reference = ?, user_id = ?, tier_id = ?, event_id = ?, quantity = ?, amount_cents = ?,
+               refund_cents = ?, status = ?, transaction_id = ?, paid_at = ?, expires_at = ?
            WHERE id = ?`
         )
         .run(
@@ -178,16 +179,19 @@ export class SqliteRepository {
           booking.eventId,
           booking.quantity,
           booking.amountCents,
+          booking.refundCents ?? 0,
           booking.status,
           booking.transactionId || null,
           booking.paidAt || null,
+          booking.expiresAt || null,
           booking.id
         );
     } else {
       this.#db
         .prepare(
-          `INSERT INTO bookings (id, reference, user_id, tier_id, event_id, quantity, amount_cents, status, transaction_id, paid_at, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO bookings (id, reference, user_id, tier_id, event_id, quantity, amount_cents,
+                                 refund_cents, status, transaction_id, paid_at, expires_at, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .run(
           booking.id,
@@ -197,9 +201,11 @@ export class SqliteRepository {
           booking.eventId,
           booking.quantity,
           booking.amountCents,
+          booking.refundCents ?? 0,
           booking.status,
           booking.transactionId || null,
           booking.paidAt || null,
+          booking.expiresAt || null,
           booking.createdAt
         );
     }
@@ -217,9 +223,11 @@ export class SqliteRepository {
       eventId: row.event_id,
       quantity: row.quantity,
       amountCents: row.amount_cents,
+      refundCents: row.refund_cents ?? 0,
       status: row.status,
       transactionId: row.transaction_id,
       paidAt: row.paid_at,
+      expiresAt: row.expires_at,
       createdAt: row.created_at,
     };
   }
@@ -289,9 +297,11 @@ export class SqliteRepository {
       eventId: row.event_id,
       quantity: row.quantity,
       amountCents: row.amount_cents,
+      refundCents: row.refund_cents ?? 0,
       status: row.status,
       transactionId: row.transaction_id,
       paidAt: row.paid_at,
+      expiresAt: row.expires_at,
       createdAt: row.created_at,
     }));
   }
@@ -313,5 +323,188 @@ export class SqliteRepository {
         tierIds: tiers.map((t) => t.id),
       };
     });
+  }
+
+  // --- Atomic Status Transitions & Maintenance ---
+
+  async updateBookingStatusAtomic(reference, fromStatus, toStatus, extraFields = {}) {
+    const sets = ['status = ?'];
+    const params = [toStatus];
+    if (extraFields.paidAt !== undefined) {
+      sets.push('paid_at = ?');
+      params.push(extraFields.paidAt);
+    }
+    if (extraFields.transactionId !== undefined) {
+      sets.push('transaction_id = ?');
+      params.push(extraFields.transactionId);
+    }
+    params.push(reference, fromStatus);
+    const result = this.#db
+      .prepare(`UPDATE bookings SET ${sets.join(', ')} WHERE reference = ? AND status = ?`)
+      .run(...params);
+    return result.changes > 0;
+  }
+
+  async listPendingBookingsBefore(isoDate) {
+    const rows = this.#db
+      .prepare('SELECT * FROM bookings WHERE status = ? AND created_at <= ?')
+      .all('pending', isoDate);
+    return rows.map((row) => ({
+      id: row.id,
+      reference: row.reference,
+      userId: row.user_id,
+      tierId: row.tier_id,
+      eventId: row.event_id,
+      quantity: row.quantity,
+      amountCents: row.amount_cents,
+      refundCents: row.refund_cents ?? 0,
+      status: row.status,
+      transactionId: row.transaction_id,
+      paidAt: row.paid_at,
+      expiresAt: row.expires_at,
+      createdAt: row.created_at,
+    }));
+  }
+
+  // --- Waitlist ---
+
+  async addToWaitlist({ id, tierId, eventId, userId, createdAt }) {
+    this.#db
+      .prepare(
+        `INSERT INTO waitlist_entries (id, tier_id, event_id, user_id, created_at)
+         VALUES (?, ?, ?, ?, ?)`
+      )
+      .run(id, tierId, eventId, userId, createdAt);
+    return { id, tierId, eventId, userId, createdAt };
+  }
+
+  async findWaitlistEntry(tierId, userId) {
+    const row = this.#db
+      .prepare('SELECT * FROM waitlist_entries WHERE tier_id = ? AND user_id = ?')
+      .get(tierId, userId);
+    if (!row) return null;
+    return {
+      id: row.id,
+      tierId: row.tier_id,
+      eventId: row.event_id,
+      userId: row.user_id,
+      createdAt: row.created_at,
+    };
+  }
+
+  async getNextWaitlistEntry(tierId) {
+    const row = this.#db
+      .prepare(
+        `SELECT we.* FROM waitlist_entries we
+         LEFT JOIN waitlist_offers wo ON wo.waitlist_entry_id = we.id AND wo.status = 'active'
+         WHERE we.tier_id = ? AND wo.id IS NULL
+         ORDER BY we.created_at ASC
+         LIMIT 1`
+      )
+      .get(tierId);
+    if (!row) return null;
+    return {
+      id: row.id,
+      tierId: row.tier_id,
+      eventId: row.event_id,
+      userId: row.user_id,
+      createdAt: row.created_at,
+    };
+  }
+
+  async removeWaitlistEntry(id) {
+    const result = this.#db.prepare('DELETE FROM waitlist_entries WHERE id = ?').run(id);
+    return result.changes > 0;
+  }
+
+  async createWaitlistOffer({ id, tierId, eventId, userId, waitlistEntryId, expiresAt, createdAt, status = 'active' }) {
+    this.#db
+      .prepare(
+        `INSERT INTO waitlist_offers (id, tier_id, event_id, user_id, waitlist_entry_id, status, expires_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(id, tierId, eventId, userId, waitlistEntryId, status, expiresAt, createdAt);
+    return { id, tierId, eventId, userId, waitlistEntryId, status, expiresAt, createdAt };
+  }
+
+  async findWaitlistOfferById(id) {
+    const row = this.#db.prepare('SELECT * FROM waitlist_offers WHERE id = ?').get(id);
+    if (!row) return null;
+    return {
+      id: row.id,
+      tierId: row.tier_id,
+      eventId: row.event_id,
+      userId: row.user_id,
+      waitlistEntryId: row.waitlist_entry_id,
+      status: row.status,
+      expiresAt: row.expires_at,
+      createdAt: row.created_at,
+    };
+  }
+
+  async findActiveWaitlistOffer(tierId, userId) {
+    const row = this.#db
+      .prepare('SELECT * FROM waitlist_offers WHERE tier_id = ? AND user_id = ? AND status = ?')
+      .get(tierId, userId, 'active');
+    if (!row) return null;
+    return {
+      id: row.id,
+      tierId: row.tier_id,
+      eventId: row.event_id,
+      userId: row.user_id,
+      waitlistEntryId: row.waitlist_entry_id,
+      status: row.status,
+      expiresAt: row.expires_at,
+      createdAt: row.created_at,
+    };
+  }
+
+  async listActiveWaitlistOffersForUser(userId) {
+    const rows = this.#db
+      .prepare(
+        `SELECT wo.*, e.title as event_title, tt.name as tier_name, tt.price_cents
+         FROM waitlist_offers wo
+         JOIN events e ON e.id = wo.event_id
+         JOIN ticket_tiers tt ON tt.id = wo.tier_id
+         WHERE wo.user_id = ? AND wo.status = 'active'
+         ORDER BY wo.expires_at ASC`
+      )
+      .all(userId);
+    return rows.map((row) => ({
+      id: row.id,
+      tierId: row.tier_id,
+      eventId: row.event_id,
+      userId: row.user_id,
+      waitlistEntryId: row.waitlist_entry_id,
+      status: row.status,
+      expiresAt: row.expires_at,
+      createdAt: row.created_at,
+      eventTitle: row.event_title,
+      tierName: row.tier_name,
+      priceCents: row.price_cents,
+    }));
+  }
+
+  async listExpiredWaitlistOffers(nowIso) {
+    const rows = this.#db
+      .prepare('SELECT * FROM waitlist_offers WHERE status = ? AND expires_at <= ?')
+      .all('active', nowIso);
+    return rows.map((row) => ({
+      id: row.id,
+      tierId: row.tier_id,
+      eventId: row.event_id,
+      userId: row.user_id,
+      waitlistEntryId: row.waitlist_entry_id,
+      status: row.status,
+      expiresAt: row.expires_at,
+      createdAt: row.created_at,
+    }));
+  }
+
+  async updateWaitlistOfferStatus(id, newStatus) {
+    const result = this.#db
+      .prepare('UPDATE waitlist_offers SET status = ? WHERE id = ?')
+      .run(newStatus, id);
+    return result.changes > 0;
   }
 }

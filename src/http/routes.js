@@ -9,7 +9,7 @@ import {
   assertBookingOwnership,
 } from './guards.js';
 
-export function registerRoutes(router, { eventService, bookingService, authService }) {
+export function registerRoutes(router, { eventService, bookingService, authService, waitlistService }) {
   // --- Authentication ---
 
   // POST /api/auth/signup - Create new account (attendee, organizer, staff)
@@ -132,7 +132,7 @@ export function registerRoutes(router, { eventService, bookingService, authServi
     sendJson(res, 200, booking);
   });
 
-  // POST /api/bookings/:reference/cancel - Cancel pending booking (Owner only)
+  // POST /api/bookings/:reference/cancel - Cancel pending or paid booking (Owner only)
   router.post('/api/bookings/:reference/cancel', async ({ req, res, params }) => {
     const user = requireUser(req);
     const existing = await bookingService.getBooking(params.reference);
@@ -142,5 +142,36 @@ export function registerRoutes(router, { eventService, bookingService, authServi
       userId: user.id,
     });
     sendJson(res, 200, booking);
+  });
+
+  // --- Waitlist ---
+
+  // POST /api/waitlist - Join the waitlist for a sold-out tier (Authenticated users)
+  router.post('/api/waitlist', async ({ req, res, body }) => {
+    const user = requireUser(req);
+    const entry = await waitlistService.joinWaitlist({
+      tierId: body.tierId,
+      eventId: body.eventId,
+      userId: user.id,
+    });
+    sendJson(res, 201, entry);
+  });
+
+  // POST /api/waitlist/offers/:id/accept - Accept an active waitlist offer (Authenticated users)
+  router.post('/api/waitlist/offers/:id/accept', async ({ req, res, params }) => {
+    const user = requireUser(req);
+    const booking = await waitlistService.acceptOffer({
+      offerId: params.id,
+      userId: user.id,
+      bookingService,
+    });
+    sendJson(res, 201, booking);
+  });
+
+  // GET /api/waitlist/offers - List active waitlist offers for the current user
+  router.get('/api/waitlist/offers', async ({ req, res }) => {
+    const user = requireUser(req);
+    const offers = await waitlistService.listOffersForUser(user.id);
+    sendJson(res, 200, offers);
   });
 }
