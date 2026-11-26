@@ -10,6 +10,7 @@ import { EventService } from './services/eventService.js';
 import { BookingService } from './services/bookingService.js';
 import { AuthService } from './services/authService.js';
 import { WaitlistService } from './services/waitlistService.js';
+import { CheckinService } from './services/checkinService.js';
 import { clock } from './lib/clock.js';
 import { startMaintenanceJob } from './jobs/maintenance.js';
 
@@ -29,7 +30,10 @@ const waitlistService = new WaitlistService({ repo: repository, clock });
 // Break circular dependency: bookingService needs waitlistService for cancelBooking
 bookingService.setWaitlistService(waitlistService);
 
-const { server } = createApp({ eventService, bookingService, authService, waitlistService });
+// Build 9: checkinService for staff ticket scanning
+const checkinService = new CheckinService({ repo: repository, clock });
+
+const { server } = createApp({ eventService, bookingService, authService, waitlistService, checkinService });
 
 // Start the periodic maintenance job (expires pending bookings + stale offers)
 const maintenanceInterval = startMaintenanceJob({ repo: repository, waitlistService, clock });

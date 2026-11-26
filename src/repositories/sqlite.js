@@ -169,7 +169,7 @@ export class SqliteRepository {
         .prepare(
           `UPDATE bookings
            SET reference = ?, user_id = ?, tier_id = ?, event_id = ?, quantity = ?, amount_cents = ?,
-               refund_cents = ?, status = ?, transaction_id = ?, paid_at = ?, expires_at = ?
+               refund_cents = ?, status = ?, transaction_id = ?, paid_at = ?, expires_at = ?, checked_in_at = ?
            WHERE id = ?`
         )
         .run(
@@ -184,14 +184,15 @@ export class SqliteRepository {
           booking.transactionId || null,
           booking.paidAt || null,
           booking.expiresAt || null,
+          booking.checkedInAt || null,
           booking.id
         );
     } else {
       this.#db
         .prepare(
           `INSERT INTO bookings (id, reference, user_id, tier_id, event_id, quantity, amount_cents,
-                                 refund_cents, status, transaction_id, paid_at, expires_at, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                                 refund_cents, status, transaction_id, paid_at, expires_at, checked_in_at, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .run(
           booking.id,
@@ -206,6 +207,7 @@ export class SqliteRepository {
           booking.transactionId || null,
           booking.paidAt || null,
           booking.expiresAt || null,
+          booking.checkedInAt || null,
           booking.createdAt
         );
     }
@@ -228,6 +230,7 @@ export class SqliteRepository {
       transactionId: row.transaction_id,
       paidAt: row.paid_at,
       expiresAt: row.expires_at,
+      checkedInAt: row.checked_in_at,
       createdAt: row.created_at,
     };
   }
@@ -302,6 +305,7 @@ export class SqliteRepository {
       transactionId: row.transaction_id,
       paidAt: row.paid_at,
       expiresAt: row.expires_at,
+      checkedInAt: row.checked_in_at,
       createdAt: row.created_at,
     }));
   }
@@ -326,6 +330,17 @@ export class SqliteRepository {
   }
 
   // --- Atomic Status Transitions & Maintenance ---
+
+  async checkinBookingAtomic(reference, checkedInAt) {
+    const result = this.#db
+      .prepare(
+        `UPDATE bookings
+         SET status = 'checked_in', checked_in_at = ?
+         WHERE reference = ? AND status = 'paid'`
+      )
+      .run(checkedInAt, reference);
+    return result.changes > 0;
+  }
 
   async updateBookingStatusAtomic(reference, fromStatus, toStatus, extraFields = {}) {
     const sets = ['status = ?'];

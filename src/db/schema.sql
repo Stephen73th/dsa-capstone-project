@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   transaction_id TEXT,
   paid_at TEXT,
   expires_at TEXT,
+  checked_in_at TEXT,
   created_at TEXT NOT NULL
 );
 

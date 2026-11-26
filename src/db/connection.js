@@ -43,5 +43,11 @@ export function createDatabase(dbPath = process.env.DB_PATH || DEFAULT_DB_PATH) 
     // Column already exists
   }
 
+  try {
+    db.exec('ALTER TABLE bookings ADD COLUMN checked_in_at TEXT;');
+  } catch {
+    // Column already exists
+  }
+
   return db;
 }

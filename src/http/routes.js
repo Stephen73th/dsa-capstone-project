@@ -8,8 +8,24 @@ import {
   assertEventOwnership,
   assertBookingOwnership,
 } from './guards.js';
+import { signTicketToken } from '../lib/ticketToken.js';
+import { RateLimiter, getClientIp } from '../lib/rateLimit.js';
 
-export function registerRoutes(router, { eventService, bookingService, authService, waitlistService }) {
+// IP rate limiters: login (10 attempts / min), checkin (60 scans / min)
+const loginLimiter = new RateLimiter({ windowMs: 60_000, maxRequests: 10 });
+const checkinLimiter = new RateLimiter({ windowMs: 60_000, maxRequests: 60 });
+
+function attachTicketToken(booking) {
+  if (booking && booking.status === 'paid') {
+    return {
+      ...booking,
+      ticketToken: signTicketToken({ reference: booking.reference }),
+    };
+  }
+  return booking;
+}
+
+export function registerRoutes(router, { eventService, bookingService, authService, waitlistService, checkinService }) {
   // --- Authentication ---
 
   // POST /api/auth/signup - Create new account (attendee, organizer, staff)
@@ -18,8 +34,9 @@ export function registerRoutes(router, { eventService, bookingService, authServi
     sendJson(res, 201, result);
   });
 
-  // POST /api/auth/login - Authenticate and return signed token
-  router.post('/api/auth/login', async ({ res, body }) => {
+  // POST /api/auth/login - Authenticate and return signed token (Rate-limited)
+  router.post('/api/auth/login', async ({ req, res, body }) => {
+    loginLimiter.assert(getClientIp(req));
     const result = await authService.login(body);
     sendJson(res, 200, result);
   });
@@ -108,7 +125,7 @@ export function registerRoutes(router, { eventService, bookingService, authServi
   router.get('/api/bookings', async ({ req, res }) => {
     const user = requireUser(req);
     const bookings = await bookingService.listUserBookings(user.id);
-    sendJson(res, 200, bookings);
+    sendJson(res, 200, bookings.map(attachTicketToken));
   });
 
   // GET /api/bookings/:reference - View a booking (Owner only, else NOT_FOUND)
@@ -116,7 +133,7 @@ export function registerRoutes(router, { eventService, bookingService, authServi
     const user = requireUser(req);
     const booking = await bookingService.getBooking(params.reference);
     assertBookingOwnership(booking, user.id);
-    sendJson(res, 200, booking);
+    sendJson(res, 200, attachTicketToken(booking));
   });
 
   // POST /api/bookings/:reference/pay - Pay for booking (Owner only)
@@ -173,5 +190,23 @@ export function registerRoutes(router, { eventService, bookingService, authServi
     const user = requireUser(req);
     const offers = await waitlistService.listOffersForUser(user.id);
     sendJson(res, 200, offers);
+  });
+
+  // --- Check-in (Staff Only) ---
+
+  // POST /api/checkin - Verify ticket token and check in attendee (Rate-limited, Staff only)
+  router.post('/api/checkin', async ({ req, res, body }) => {
+    checkinLimiter.assert(getClientIp(req));
+    requireRole(req, 'staff');
+
+    if (!checkinService) {
+      throw new Error('CheckinService is not configured');
+    }
+
+    const result = await checkinService.checkin({
+      token: body.token,
+      eventId: body.eventId,
+    });
+    sendJson(res, 200, result);
   });
 }
